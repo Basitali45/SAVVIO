@@ -29,11 +29,6 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onSuccess, onBackToStore
     }
   };
 
-  const fillDemoCredentials = () => {
-    setEmail('admin@savvio.com');
-    setPassword('savvio2025');
-  };
-
   return (
     <div className="min-h-screen bg-neutral-900 flex flex-col justify-center items-center p-4">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-8 border border-neutral-800">
@@ -69,7 +64,7 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onSuccess, onBackToStore
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin@savvio.com"
+                placeholder="Enter admin email"
                 className="w-full pl-9 pr-3 py-2.5 text-sm border border-neutral-300 rounded-lg focus:outline-hidden focus:border-neutral-900"
               />
             </div>
@@ -97,18 +92,6 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onSuccess, onBackToStore
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
-          </div>
-
-          {/* Quick Demo Credentials Autofill */}
-          <div className="p-2.5 bg-neutral-50 rounded-lg border border-neutral-200 text-xs flex items-center justify-between">
-            <span className="text-neutral-500 text-[11px]">Default: admin@savvio.com</span>
-            <button
-              type="button"
-              onClick={fillDemoCredentials}
-              className="text-neutral-900 hover:underline font-bold text-[11px]"
-            >
-              1-Click Fill
-            </button>
           </div>
 
           <button
