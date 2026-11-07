@@ -45,7 +45,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   const subtotalAfterDiscount = rawSubtotal - discountAmount;
   
   const freeThreshold = settings.free_delivery_threshold || 5000;
-  const shippingFee = subtotalAfterDiscount >= freeThreshold || items.length === 0 ? 0 : 250;
+  const standardDelivery = settings.delivery_charges !== undefined ? settings.delivery_charges : 300;
+  const shippingFee = subtotalAfterDiscount >= freeThreshold || items.length === 0 ? 0 : standardDelivery;
   const grandTotal = subtotalAfterDiscount + shippingFee;
 
   const handleApplyCoupon = (e: React.FormEvent) => {

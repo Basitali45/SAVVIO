@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, ShoppingBag, Truck, RotateCcw, ShieldCheck, Heart, Share2, Check } from 'lucide-react';
 import { Product, WebsiteSettings } from '../types.ts';
 import { generateSingleProductWhatsAppUrl } from '../utils/whatsapp.ts';
@@ -18,17 +18,31 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 }) => {
   if (!product) return null;
 
-  const [selectedImage, setSelectedImage] = useState(
+  const [selectedImage, setSelectedImage] = useState<string>(
     product.images && product.images.length > 0 ? product.images[0] : ''
   );
-  const [selectedSize, setSelectedSize] = useState(
+  const [selectedSize, setSelectedSize] = useState<string>(
     product.sizes && product.sizes.length > 0 ? product.sizes[0] : 'Standard'
   );
-  const [selectedColor, setSelectedColor] = useState(
+  const [selectedColor, setSelectedColor] = useState<string>(
     product.colors && product.colors.length > 0 ? product.colors[0] : 'Standard'
   );
   const [quantity, setQuantity] = useState(1);
   const [justAdded, setJustAdded] = useState(false);
+
+  // Sync state whenever product changes
+  useEffect(() => {
+    if (product?.images && product.images.length > 0) {
+      setSelectedImage(product.images[0]);
+    }
+    if (product?.sizes && product.sizes.length > 0) {
+      setSelectedSize(product.sizes[0]);
+    }
+    if (product?.colors && product.colors.length > 0) {
+      setSelectedColor(product.colors[0]);
+    }
+    setQuantity(1);
+  }, [product]);
 
   const images = product.images && product.images.length > 0 ? product.images : [selectedImage];
 
@@ -51,27 +65,28 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 animate-in fade-in duration-200">
-      <div className="relative w-full max-w-4xl bg-white rounded-2xl shadow-2xl overflow-hidden my-6 border border-neutral-200">
+      <div className="relative w-full max-w-4xl bg-white rounded-2xl shadow-2xl overflow-hidden my-6 border border-neutral-200 flex flex-col max-h-[92vh]">
         
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 z-20 p-2 text-neutral-500 hover:text-neutral-900 bg-white/80 hover:bg-white rounded-full shadow-xs transition-colors"
+          className="absolute top-4 right-4 z-20 p-2 text-neutral-500 hover:text-neutral-900 bg-white/90 hover:bg-white rounded-full shadow-md transition-colors"
           aria-label="Close Modal"
         >
           <X className="w-5 h-5" />
         </button>
 
-        <div className="grid grid-cols-1 md:grid-cols-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 overflow-y-auto">
           
-          {/* Left Column: Image Showcase & Thumbnails */}
-          <div className="p-4 sm:p-6 bg-[#FAF9F6] flex flex-col justify-between border-b md:border-b-0 md:border-r border-neutral-200">
-            {/* Primary Main Image */}
-            <div className="relative w-full aspect-square rounded-xl overflow-hidden bg-white flex items-center justify-center p-4 border border-neutral-200/80 shadow-xs">
+          {/* Left Column: Image Showcase & Thumbnails - FULL IMAGE DISPLAY WITHOUT CROPPING */}
+          <div className="p-4 sm:p-6 bg-white sm:bg-[#f5f5f5] flex flex-col justify-start border-b md:border-b-0 md:border-r border-neutral-200">
+            {/* Primary Main Image Container - aspect 4:5, height auto, max-h 520px mobile / 600px desktop, object-fit contain */}
+            <div className="relative w-full aspect-4/5 md:aspect-auto h-auto max-h-[520px] md:max-h-[600px] rounded-xl overflow-hidden bg-white sm:bg-[#f5f5f5] flex items-center justify-center p-4 sm:p-6 border border-neutral-200/80 shadow-xs">
               <img
                 src={selectedImage || images[0]}
                 alt={product.name}
-                className="w-full h-full object-contain object-center transition-all duration-300"
+                className="w-full h-auto max-h-[480px] md:max-h-[560px] object-contain object-center transition-all duration-300"
+                style={{ objectFit: 'contain' }}
                 referrerPolicy="no-referrer"
               />
               {product.discount_percentage > 0 && (
@@ -81,32 +96,37 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
               )}
             </div>
 
-            {/* Gallery Thumbnails */}
+            {/* Gallery Thumbnails - full image with object-fit: contain, responsive for mobile */}
             {images.length > 1 && (
-              <div className="mt-4 flex items-center gap-3 overflow-x-auto pb-1">
-                {images.map((img, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => setSelectedImage(img)}
-                    className={`relative w-16 h-16 sm:w-20 sm:h-20 rounded-lg overflow-hidden border-2 bg-white p-1 shrink-0 transition-all ${
-                      selectedImage === img
-                        ? 'border-neutral-950 shadow-sm scale-105'
-                        : 'border-transparent opacity-70 hover:opacity-100'
-                    }`}
-                  >
-                    <img
-                      src={img}
-                      alt={`Thumbnail ${idx + 1}`}
-                      className="w-full h-full object-contain"
-                    />
-                  </button>
-                ))}
+              <div className="mt-4 flex items-center gap-3 overflow-x-auto pb-2 scrollbar-thin">
+                {images.map((img, idx) => {
+                  const isCurrent = (selectedImage || images[0]) === img;
+                  return (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setSelectedImage(img)}
+                      className={`relative w-16 h-20 sm:w-20 sm:h-24 rounded-lg overflow-hidden border-2 bg-white p-1.5 shrink-0 transition-all cursor-pointer flex items-center justify-center ${
+                        isCurrent
+                          ? 'border-neutral-950 shadow-md scale-105 ring-1 ring-neutral-950'
+                          : 'border-neutral-200 opacity-70 hover:opacity-100 hover:border-neutral-400'
+                      }`}
+                    >
+                      <img
+                        src={img}
+                        alt={`Thumbnail ${idx + 1}`}
+                        className="w-full h-full object-contain object-center"
+                        style={{ objectFit: 'contain' }}
+                      />
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
 
           {/* Right Column: Specifications & Actions */}
-          <div className="p-6 sm:p-8 flex flex-col justify-between space-y-6">
+          <div className="p-6 sm:p-8 flex flex-col justify-between space-y-6 bg-white">
             <div>
               {/* Category & Stock */}
               <div className="flex items-center justify-between text-xs font-medium uppercase tracking-widest text-neutral-400">
@@ -154,8 +174,9 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                     {product.sizes.map((size) => (
                       <button
                         key={size}
+                        type="button"
                         onClick={() => setSelectedSize(size)}
-                        className={`min-w-10 h-10 px-3 rounded-lg border text-xs font-semibold tracking-wider transition-all ${
+                        className={`min-w-10 h-10 px-3 rounded-lg border text-xs font-semibold tracking-wider transition-all cursor-pointer ${
                           selectedSize === size
                             ? 'bg-neutral-950 text-white border-neutral-950 shadow-xs'
                             : 'bg-white text-neutral-800 border-neutral-200 hover:border-neutral-400'
@@ -178,8 +199,9 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                     {product.colors.map((color) => (
                       <button
                         key={color}
+                        type="button"
                         onClick={() => setSelectedColor(color)}
-                        className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${
+                        className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition-all cursor-pointer ${
                           selectedColor === color
                             ? 'bg-neutral-950 text-white border-neutral-950 shadow-xs'
                             : 'bg-white text-neutral-700 border-neutral-200 hover:border-neutral-400'
@@ -199,8 +221,9 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 </span>
                 <div className="flex items-center border border-neutral-200 rounded-lg overflow-hidden bg-neutral-50">
                   <button
+                    type="button"
                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                    className="w-9 h-9 flex items-center justify-center text-neutral-600 hover:bg-neutral-200 text-base font-bold transition-colors"
+                    className="w-9 h-9 flex items-center justify-center text-neutral-600 hover:bg-neutral-200 text-base font-bold transition-colors cursor-pointer"
                   >
                     -
                   </button>
@@ -208,8 +231,9 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                     {quantity}
                   </span>
                   <button
+                    type="button"
                     onClick={() => setQuantity(quantity + 1)}
-                    className="w-9 h-9 flex items-center justify-center text-neutral-600 hover:bg-neutral-200 text-base font-bold transition-colors"
+                    className="w-9 h-9 flex items-center justify-center text-neutral-600 hover:bg-neutral-200 text-base font-bold transition-colors cursor-pointer"
                   >
                     +
                   </button>
@@ -217,11 +241,12 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
               </div>
             </div>
 
-            {/* CTAs */}
-            <div className="space-y-3 pt-4 border-t border-neutral-200">
+            {/* CTAs and Back to Shopping Button */}
+            <div className="space-y-4 pt-4 border-t border-neutral-200">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {/* Add to Cart */}
                 <button
+                  type="button"
                   onClick={handleAddToCart}
                   disabled={!product.in_stock}
                   className={`py-3.5 px-4 rounded-xl text-xs sm:text-sm font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-md cursor-pointer ${
@@ -247,6 +272,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 
                 {/* Direct Order on WhatsApp */}
                 <button
+                  type="button"
                   onClick={handleWhatsAppOrder}
                   className="py-3.5 px-4 bg-[#128C7E] hover:bg-[#075E54] text-white rounded-xl text-xs sm:text-sm font-bold uppercase tracking-wider flex items-center justify-center gap-2 shadow-md transition-colors cursor-pointer"
                 >
@@ -268,6 +294,17 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   <span>7-Day Easy Size Exchanges</span>
                 </div>
               </div>
+
+              {/* ISSUE 2: Clear Back to Shopping Button */}
+              <div className="pt-4 pb-2 my-2 flex justify-center w-full border-t border-neutral-100">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="w-full sm:w-auto sm:min-w-[280px] py-3.5 px-6 bg-white hover:bg-neutral-100 text-neutral-950 border-2 border-neutral-950 rounded-xl font-bold text-xs sm:text-sm uppercase tracking-wider transition-all shadow-xs hover:shadow-md flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <span>← Back to Shopping</span>
+                </button>
+              </div>
             </div>
 
           </div>
@@ -276,3 +313,4 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
     </div>
   );
 };
+

@@ -91,6 +91,7 @@ export interface WebsiteSettings {
   contact_phone: string;
   currency: string;
   free_delivery_threshold: number;
+  delivery_charges?: number;
   announcement_bar_enabled: boolean;
   announcement_text: string;
   announcement_bg_color: string;

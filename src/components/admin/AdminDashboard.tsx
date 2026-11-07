@@ -23,7 +23,7 @@ import {
   Sparkles,
   Upload
 } from 'lucide-react';
-import { Product, Category, Order, Offer, Banner, WebsiteSettings } from '../../types.ts';
+import { Product, Category, Order, Offer, Banner, WebsiteSettings, OrderStatus } from '../../types.ts';
 import { api } from '../../services/api.ts';
 import { ProductFormModal } from './ProductFormModal.tsx';
 import { OrderDetailsModal } from './OrderDetailsModal.tsx';
@@ -64,9 +64,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onView
   const [newOfferCode, setNewOfferCode] = useState('');
   const [newOfferDiscount, setNewOfferDiscount] = useState(15);
   const [newOfferTitle, setNewOfferTitle] = useState('');
-
-  // SQL Script Modal / Tab
-  const [copiedSql, setCopiedSql] = useState(false);
 
   useEffect(() => {
     loadAllData();
@@ -216,46 +213,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onView
     return o.status === orderStatusFilter;
   });
 
-  const sqlSetupScript = `-- SAVVIO PostgreSQL / Supabase Schema Script
--- Paste this directly into Supabase SQL Editor:
-CREATE TABLE IF NOT EXISTS public.products (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  slug TEXT UNIQUE,
-  description TEXT,
-  regular_price NUMERIC(10,2),
-  sale_price NUMERIC(10,2),
-  discount_percentage INT,
-  category_id TEXT,
-  category_name TEXT,
-  images JSONB DEFAULT '[]'::jsonb,
-  is_featured BOOLEAN DEFAULT false,
-  is_new_arrival BOOLEAN DEFAULT false,
-  in_stock BOOLEAN DEFAULT true,
-  stock_quantity INT DEFAULT 10,
-  sizes JSONB DEFAULT '["S","M","L","XL"]'::jsonb,
-  colors JSONB DEFAULT '["Black"]'::jsonb,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-CREATE TABLE IF NOT EXISTS public.orders (
-  id TEXT PRIMARY KEY,
-  order_number TEXT UNIQUE,
-  customer_name TEXT,
-  customer_phone TEXT,
-  delivery_address TEXT,
-  city TEXT,
-  notes TEXT,
-  total_amount NUMERIC(10,2),
-  status TEXT DEFAULT 'pending',
-  items JSONB,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
--- Run supabase_schema.sql for full tables, RLS policies & constraints!`;
-
-  const copySqlToClipboard = () => {
-    navigator.clipboard.writeText(sqlSetupScript);
-    setCopiedSql(true);
-    setTimeout(() => setCopiedSql(false), 2000);
+  // Order Status Update directly from menu / select
+  const handleUpdateOrderStatus = async (orderId: string, newStatus: OrderStatus) => {
+    try {
+      const updated = await api.updateOrderStatus(orderId, newStatus);
+      setOrders((prev) => prev.map((o) => (o.id === orderId ? updated : o)));
+      showToast(`Order status updated to ${newStatus.toUpperCase()}`);
+    } catch (err) {
+      alert('Failed to update order status');
+    }
   };
 
   return (
@@ -522,17 +488,30 @@ CREATE TABLE IF NOT EXISTS public.orders (
                         <td className="p-3.5">{ord.items?.length || 1} item(s)</td>
                         <td className="p-3.5 font-bold tabular-nums">PKR {ord.total_amount.toLocaleString()}</td>
                         <td className="p-3.5">
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                            ord.status === 'delivered'
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : ord.status === 'shipped'
-                              ? 'bg-blue-100 text-blue-800'
-                              : ord.status === 'pending'
-                              ? 'bg-amber-100 text-amber-800'
-                              : 'bg-neutral-100 text-neutral-800'
-                          }`}>
-                            {ord.status}
-                          </span>
+                          <select
+                            value={ord.status}
+                            onChange={(e) => handleUpdateOrderStatus(ord.id, e.target.value as OrderStatus)}
+                            className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider border transition-colors cursor-pointer focus:outline-hidden ${
+                              ord.status === 'delivered'
+                                ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                                : ord.status === 'shipped'
+                                ? 'bg-indigo-50 text-indigo-800 border-indigo-300'
+                                : ord.status === 'processing'
+                                ? 'bg-purple-50 text-purple-800 border-purple-300'
+                                : ord.status === 'confirmed'
+                                ? 'bg-blue-50 text-blue-800 border-blue-300'
+                                : ord.status === 'pending'
+                                ? 'bg-amber-50 text-amber-800 border-amber-300'
+                                : 'bg-red-50 text-red-800 border-red-300'
+                            }`}
+                          >
+                            <option value="pending">Pending</option>
+                            <option value="confirmed">Confirmed</option>
+                            <option value="processing">Processing</option>
+                            <option value="shipped">Shipped</option>
+                            <option value="delivered">Delivered</option>
+                            <option value="cancelled">Cancelled</option>
+                          </select>
                         </td>
                         <td className="p-3.5 text-right">
                           <button
@@ -830,19 +809,30 @@ CREATE TABLE IF NOT EXISTS public.orders (
                             PKR {ord.total_amount.toLocaleString()}
                           </td>
                           <td className="p-3.5">
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                              ord.status === 'delivered'
-                                ? 'bg-emerald-100 text-emerald-800'
-                                : ord.status === 'shipped'
-                                ? 'bg-indigo-100 text-indigo-800'
-                                : ord.status === 'pending'
-                                ? 'bg-amber-100 text-amber-800'
-                                : ord.status === 'cancelled'
-                                ? 'bg-red-100 text-red-800'
-                                : 'bg-neutral-100 text-neutral-800'
-                            }`}>
-                              {ord.status}
-                            </span>
+                            <select
+                              value={ord.status}
+                              onChange={(e) => handleUpdateOrderStatus(ord.id, e.target.value as OrderStatus)}
+                              className={`px-2.5 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider border transition-colors cursor-pointer focus:outline-hidden ${
+                                ord.status === 'delivered'
+                                  ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                                  : ord.status === 'shipped'
+                                  ? 'bg-indigo-50 text-indigo-800 border-indigo-300'
+                                  : ord.status === 'processing'
+                                  ? 'bg-purple-50 text-purple-800 border-purple-300'
+                                  : ord.status === 'confirmed'
+                                  ? 'bg-blue-50 text-blue-800 border-blue-300'
+                                  : ord.status === 'pending'
+                                  ? 'bg-amber-50 text-amber-800 border-amber-300'
+                                  : 'bg-red-50 text-red-800 border-red-300'
+                              }`}
+                            >
+                              <option value="pending">Pending</option>
+                              <option value="confirmed">Confirmed</option>
+                              <option value="processing">Processing</option>
+                              <option value="shipped">Shipped</option>
+                              <option value="delivered">Delivered</option>
+                              <option value="cancelled">Cancelled</option>
+                            </select>
                           </td>
                           <td className="p-3.5 text-right">
                             <button
@@ -1228,6 +1218,23 @@ CREATE TABLE IF NOT EXISTS public.orders (
 
                   <div>
                     <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-700 mb-1">
+                      Standard Delivery Charges (PKR)
+                    </label>
+                    <input
+                      type="number"
+                      value={settings.delivery_charges !== undefined ? settings.delivery_charges : 300}
+                      onChange={(e) =>
+                        setSettings({
+                          ...settings,
+                          delivery_charges: parseInt(e.target.value, 10) || 0,
+                        })
+                      }
+                      className="w-full px-3 py-2 text-xs border border-neutral-300 rounded-lg"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-700 mb-1">
                       Floating WhatsApp Button
                     </label>
                     <div className="pt-2">
@@ -1286,78 +1293,7 @@ CREATE TABLE IF NOT EXISTS public.orders (
                 </div>
               </div>
 
-              {/* Cloud Database (Supabase) Setup Section */}
-              <div className="space-y-4 pt-4 border-t border-neutral-200">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Database className="w-4 h-4 text-emerald-600" />
-                    <h3 className="font-heading font-bold text-sm uppercase tracking-wider text-neutral-900">
-                      Cloud Database & Supabase Integration
-                    </h3>
-                  </div>
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-emerald-100 text-emerald-800">
-                    Active Storage (Atomic Server DB)
-                  </span>
-                </div>
 
-                <div className="p-4 bg-neutral-50 rounded-lg border border-neutral-200 text-xs text-neutral-600 space-y-2 leading-relaxed">
-                  <p>
-                    The store is currently running with persistent server disk storage (in <code className="bg-neutral-200 px-1 py-0.5 rounded">/data/savvio_db.json</code>) with permanent image uploads in <code className="bg-neutral-200 px-1 py-0.5 rounded">/public/uploads</code>.
-                  </p>
-                  <p>
-                    To link an external Supabase project for Vercel deployment, enter your Supabase Project URL & Anon Public Key below, and execute the generated SQL script in your Supabase SQL editor:
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-700 mb-1">
-                      Supabase Project URL
-                    </label>
-                    <input
-                      type="url"
-                      value={settings.supabase_url || ''}
-                      onChange={(e) => setSettings({ ...settings, supabase_url: e.target.value })}
-                      placeholder="https://xyzcompany.supabase.co"
-                      className="w-full px-3 py-2 text-xs border border-neutral-300 rounded-lg font-mono text-[11px]"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-700 mb-1">
-                      Supabase Anon / Public Key
-                    </label>
-                    <input
-                      type="password"
-                      value={settings.supabase_anon_key || ''}
-                      onChange={(e) => setSettings({ ...settings, supabase_anon_key: e.target.value })}
-                      placeholder="eyJhbGciOiJIUzI1NiIsIn..."
-                      className="w-full px-3 py-2 text-xs border border-neutral-300 rounded-lg font-mono text-[11px]"
-                    />
-                  </div>
-                </div>
-
-                {/* SQL Script Viewer */}
-                <div className="p-4 bg-neutral-900 text-neutral-200 rounded-lg space-y-2">
-                  <div className="flex items-center justify-between text-xs font-semibold text-neutral-400">
-                    <span>Complete PostgreSQL DDL Setup Script (Supabase)</span>
-                    <button
-                      type="button"
-                      onClick={copySqlToClipboard}
-                      className="flex items-center gap-1.5 px-3 py-1 bg-neutral-800 hover:bg-neutral-700 text-white rounded text-xs transition-colors"
-                    >
-                      {copiedSql ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                      <span>{copiedSql ? 'Copied SQL!' : 'Copy SQL'}</span>
-                    </button>
-                  </div>
-                  <pre className="text-[11px] font-mono text-neutral-300 overflow-x-auto max-h-36 p-2 bg-neutral-950 rounded">
-                    {sqlSetupScript}
-                  </pre>
-                  <p className="text-[10px] text-neutral-400">
-                    Also available at <code className="text-white">/supabase_schema.sql</code> in the repository root.
-                  </p>
-                </div>
-              </div>
 
               <div className="pt-4 border-t border-neutral-200">
                 <button
